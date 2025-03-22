@@ -13,14 +13,12 @@ patients = [
         "name": "Alice Carter",
         "dob": "1982-04-19",
         "insurance": "Blue Cross",
-        "outstanding_claims": 2
     },
     {
         "patient_id": "P002",
         "name": "David Kim",
         "dob": "1975-08-03",
         "insurance": "UnitedHealth",
-        "outstanding_claims": 0
     }
 ]
 
@@ -36,25 +34,16 @@ def home():
 
 @app.route("/patients")
 def view_patients():
-    return render_template("patients.html", patients=patients)
-
-@app.route("/submit", methods=["GET", "POST"])
-def submit_claim():
-    if request.method == "POST":
-        patient_id = request.form["patient_id"]
-        amount = float(request.form["amount"])
-        diagnosis = request.form["diagnosis"]
-        claim = {
-            "claim_id": f"CLM-{len(claims)+1:06}",
-            "status": "Submitted",
-            "amount": amount,
-            "diagnosis": diagnosis,
-            "patient_id": patient_id
-        }
-        claims.append(claim)
-        return redirect(url_for("claim_status"))
-    return render_template("submit.html", patients=patients)
-
+    # Attach dynamic claim counts
+    patient_claims = []
+    for patient in patients:
+        count = sum(1 for claim in claims if claim["patient_id"] == patient["patient_id"])
+        patient_claims.append({
+            "name": patient["name"],
+            "insurance": patient["insurance"],
+            "claim_count": count
+        })
+    return render_template("patients.html", patients=patient_claims)
 @app.route("/status")
 def claim_status():
     return render_template("status.html", claim=claims[-1] if claims else None)

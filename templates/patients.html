@@ -6,11 +6,11 @@
       </head>
   <body>
     <h2>👩‍⚕️ Patient List</h2>
-    <ul>
-      {% for p in patients %}
-        <li>{{ p.name }} ({{ p.insurance }}) - {{ p.outstanding_claims }} claims</li>
-      {% endfor %}
-    </ul>
-    <a href="/">🔙 Back</a>
+<ul>
+  {% for p in patients %}
+    <li>{{ p.name }} ({{ p.insurance }}) - {{ p.claim_count }} claim{{ 's' if p.claim_count != 1 else '' }}</li>
+  {% endfor %}
+</ul>
+<a href="/" class="button">🔙 Back</a>
   </body>
 </html>
