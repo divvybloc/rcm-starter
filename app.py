@@ -82,22 +82,25 @@ def upload_csv():
         if file.filename.endswith(".csv"):
             filepath = os.path.join("uploads", file.filename)
             file.save(filepath)
-            df = pd.read_csv(filepath)
+            try:
+                df = pd.read_csv(filepath)
+                for _, row in df.iterrows():
+                    claim = {
+                        "claim_id": f"CLM-{len(claims)+1:06}",
+                        "patient_id": row["patient_id"],
+                        "name": row.get("name", "Unknown"),
+                        "amount": float(row["amount"]),
+                        "diagnosis": row["diagnosis"],
+                        "status": "Imported"
+                    }
+                    claims.append(claim)
 
-            # Load each row into the claims list
-            for _, row in df.iterrows():
-                claim = {
-                    "claim_id": f"CLM-{len(claims)+1:06}",
-                    "patient_id": row["patient_id"],
-                    "name": row.get("name", ""),
-                    "amount": float(row["amount"]),
-                    "diagnosis": row["diagnosis"],
-                    "status": "Imported"
-                }
-                claims.append(claim)
-
-            table_html = df.to_html(classes="data-table", index=False)
-            return render_template("upload_result.html", table=table_html, filename=file.filename)
+                print(f"✅ Imported {len(df)} claims. Total: {len(claims)}")
+                table_html = df.to_html(classes="data-table", index=False)
+                return render_template("upload_result.html", table=table_html, filename=file.filename)
+            except Exception as e:
+                print("❌ Upload Error:", e)
+                return f"Something went wrong: {e}"
         else:
             return "❌ Invalid file type. Upload a CSV."
     return render_template("upload.html")
@@ -143,10 +146,11 @@ def download_pdf():
     return send_file(filepath, as_attachment=True)
 
 # Required for Render
-import sys  # you can add this near the top if you like, but okay to keep here
+import sys
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    if "--port=5050" in sys.argv:
-        port = 5050
+    port = 5000
+    for arg in sys.argv:
+        if "--port=" in arg:
+            port = int(arg.split("=")[-1])
     app.run(host="0.0.0.0", port=port)
