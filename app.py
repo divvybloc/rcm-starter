@@ -44,6 +44,23 @@ def view_patients():
             "claim_count": count
         })
     return render_template("patients.html", patients=patient_claims)
+@app.route("/submit", methods=["GET", "POST"])
+def submit_claim():
+    if request.method == "POST":
+        patient_id = request.form["patient_id"]
+        amount = float(request.form["amount"])
+        diagnosis = request.form["diagnosis"]
+        claim = {
+            "claim_id": f"CLM-{len(claims)+1:06}",
+            "status": "Submitted",
+            "amount": amount,
+            "diagnosis": diagnosis,
+            "patient_id": patient_id
+        }
+        claims.append(claim)
+        return redirect(url_for("claim_status"))
+    return render_template("submit.html", patients=patients)
+
 @app.route("/status")
 def claim_status():
     return render_template("status.html", claim=claims[-1] if claims else None)
