@@ -47,18 +47,28 @@ def view_patients():
 @app.route("/submit", methods=["GET", "POST"])
 def submit_claim():
     if request.method == "POST":
-        patient_id = request.form["patient_id"]
-        amount = float(request.form["amount"])
-        diagnosis = request.form["diagnosis"]
-        claim = {
-            "claim_id": f"CLM-{len(claims)+1:06}",
-            "status": "Submitted",
-            "amount": amount,
-            "diagnosis": diagnosis,
-            "patient_id": patient_id
-        }
-        claims.append(claim)
-        return redirect(url_for("claim_status"))
+        print("🔁 Received POST")
+        print("📦 Form Data:", request.form)
+
+        try:
+            patient_id = request.form["patient_id"]
+            amount = float(request.form["amount"])
+            diagnosis = request.form["diagnosis"]
+            claim = {
+                "claim_id": f"CLM-{len(claims)+1:06}",
+                "status": "Submitted",
+                "amount": amount,
+                "diagnosis": diagnosis,
+                "patient_id": patient_id
+            }
+            claims.append(claim)
+            print("✅ Claim added:", claim)
+            return redirect(url_for("claim_status"))
+        except Exception as e:
+            print("❌ Error:", e)
+            return "Something went wrong: " + str(e)
+
+    print("🟢 Rendering Submit Form")
     return render_template("submit.html", patients=patients)
 
 @app.route("/status")
@@ -92,21 +102,38 @@ def download_csv():
 def download_pdf():
     if not claims:
         return "⚠️ No claims to print."
-    claim = claims[-1]  # just show latest in PDF
-    filepath = os.path.join("downloads", "claim_summary.pdf")
+
+    filepath = os.path.join("downloads", "all_claims_summary.pdf")
     c = canvas.Canvas(filepath, pagesize=letter)
     width, height = letter
-    c.setFont("Helvetica", 14)
-    c.drawString(50, height - 50, "Claim Summary Report")
-    y = height - 100
-    for key, value in claim.items():
-        c.setFont("Helvetica", 12)
-        c.drawString(50, y, f"{key.capitalize()}: {value}")
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(50, height - 50, "All Claims Report")
+
+    y = height - 80
+    c.setFont("Helvetica", 12)
+
+    for i, claim in enumerate(claims, 1):
+        c.drawString(50, y, f"Claim {i}")
         y -= 20
+        for key, value in claim.items():
+            c.drawString(70, y, f"{key.capitalize()}: {value}")
+            y -= 15
+        y -= 10  # Extra spacing between claims
+
+        # Start new page if needed
+        if y < 100:
+            c.showPage()
+            y = height - 50
+            c.setFont("Helvetica", 12)
+
     c.save()
     return send_file(filepath, as_attachment=True)
 
 # Required for Render
+import sys  # you can add this near the top if you like, but okay to keep here
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
+    if "--port=5050" in sys.argv:
+        port = 5050
     app.run(host="0.0.0.0", port=port)
