@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Upload CSV</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  </head>
+  <body>
+    <h2>📤 Upload CSV File</h2>
+    
+    <form method="POST" enctype="multipart/form-data">
+      <label>Select a CSV file:</label><br>
+      <input type="file" name="csv_file" required><br><br>
+      <button type="submit">Upload</button>
+    </form>
+
+    <br>
+    <a href="/">🔙 Back to Home</a>
+  </body>
+</html>
