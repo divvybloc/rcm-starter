@@ -83,6 +83,19 @@ def upload_csv():
             filepath = os.path.join("uploads", file.filename)
             file.save(filepath)
             df = pd.read_csv(filepath)
+
+            # Load each row into the claims list
+            for _, row in df.iterrows():
+                claim = {
+                    "claim_id": f"CLM-{len(claims)+1:06}",
+                    "patient_id": row["patient_id"],
+                    "name": row.get("name", ""),
+                    "amount": float(row["amount"]),
+                    "diagnosis": row["diagnosis"],
+                    "status": "Imported"
+                }
+                claims.append(claim)
+
             table_html = df.to_html(classes="data-table", index=False)
             return render_template("upload_result.html", table=table_html, filename=file.filename)
         else:
