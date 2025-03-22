@@ -25,7 +25,7 @@ patients = [
     }
 ]
 
-last_claim = {}
+claims = []
 
 @app.route("/")
 def home():
@@ -42,19 +42,20 @@ def submit_claim():
         patient_id = request.form["patient_id"]
         amount = float(request.form["amount"])
         diagnosis = request.form["diagnosis"]
-        last_claim = {
-            "claim_id": "CLM-987654",
+        claim = {
+            "claim_id": f"CLM-{len(claims)+1:06}",
             "status": "Submitted",
             "amount": amount,
             "diagnosis": diagnosis,
             "patient_id": patient_id
         }
+        claims.append(claim)
         return redirect(url_for("claim_status"))
     return render_template("submit.html", patients=patients)
 
 @app.route("/status")
 def claim_status():
-    return render_template("status.html", claim=last_claim)
+    return render_template("status.html", claim=claims[-1] if claims else None)
 # Set up folders
 UPLOAD_FOLDER = 'uploads'
 DOWNLOAD_FOLDER = 'downloads'
@@ -81,18 +82,14 @@ def upload_csv():
 # ⬇️ Download CSV Route
 @app.route("/download/csv")
 def download_csv():
-    if not last_claim:
-        return "⚠️ No claim has been submitted yet. Please submit one first."
+    if not claims:
+        return "⚠️ No claims submitted yet."
 
-    df = pd.DataFrame([last_claim])
-    filepath = os.path.join(DOWNLOAD_FOLDER, "claim_report.csv")
+    df = pd.DataFrame(claims)
+    filepath = os.path.join("downloads", "claim_report.csv")
     df.to_csv(filepath, index=False)
 
-    try:
-        return send_file(filepath, as_attachment=True)
-    except FileNotFoundError:
-        return "❌ Could not find the file to download."
-
+    return send_file(filepath, as_attachment=True)
 # ⬇️ Download PDF Route
 @app.route("/download/pdf")
 def download_pdf():
