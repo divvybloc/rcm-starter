@@ -1,13 +1,12 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, send_file
 import os
 import pandas as pd
-from flask import send_file
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
 app = Flask(__name__)
 
-# Mock data
+# In-memory data store
 patients = [
     {
         "patient_id": "P001",
@@ -27,6 +26,10 @@ patients = [
 
 claims = []
 
+# Ensure upload/download folders exist
+os.makedirs("uploads", exist_ok=True)
+os.makedirs("downloads", exist_ok=True)
+
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -37,7 +40,6 @@ def view_patients():
 
 @app.route("/submit", methods=["GET", "POST"])
 def submit_claim():
-    global last_claim
     if request.method == "POST":
         patient_id = request.form["patient_id"]
         amount = float(request.form["amount"])
@@ -56,66 +58,49 @@ def submit_claim():
 @app.route("/status")
 def claim_status():
     return render_template("status.html", claim=claims[-1] if claims else None)
-# Set up folders
-UPLOAD_FOLDER = 'uploads'
-DOWNLOAD_FOLDER = 'downloads'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# 📤 Upload CSV Route
 @app.route("/upload", methods=["GET", "POST"])
 def upload_csv():
     if request.method == "POST":
         file = request.files["csv_file"]
         if file.filename.endswith(".csv"):
-            filepath = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
+            filepath = os.path.join("uploads", file.filename)
             file.save(filepath)
             df = pd.read_csv(filepath)
-            # Convert to HTML table
             table_html = df.to_html(classes="data-table", index=False)
             return render_template("upload_result.html", table=table_html, filename=file.filename)
         else:
-            return "❌ Invalid file type. Please upload a CSV file."
+            return "❌ Invalid file type. Upload a CSV."
     return render_template("upload.html")
 
-# ⬇️ Download CSV Route
 @app.route("/download/csv")
 def download_csv():
     if not claims:
         return "⚠️ No claims submitted yet."
-
     df = pd.DataFrame(claims)
     filepath = os.path.join("downloads", "claim_report.csv")
     df.to_csv(filepath, index=False)
-
     return send_file(filepath, as_attachment=True)
-# ⬇️ Download PDF Route
+
 @app.route("/download/pdf")
 def download_pdf():
-    filepath = os.path.join(DOWNLOAD_FOLDER, "claim_summary.pdf")
+    if not claims:
+        return "⚠️ No claims to print."
+    claim = claims[-1]  # just show latest in PDF
+    filepath = os.path.join("downloads", "claim_summary.pdf")
     c = canvas.Canvas(filepath, pagesize=letter)
     width, height = letter
-
     c.setFont("Helvetica", 14)
     c.drawString(50, height - 50, "Claim Summary Report")
-
-    if last_claim:
-        y = height - 100
-        for key, value in last_claim.items():
-            c.setFont("Helvetica", 12)
-            c.drawString(50, y, f"{key.capitalize()}: {value}")
-            y -= 20
-    else:
-        c.drawString(50, height - 100, "No claim submitted yet.")
-
+    y = height - 100
+    for key, value in claim.items():
+        c.setFont("Helvetica", 12)
+        c.drawString(50, y, f"{key.capitalize()}: {value}")
+        y -= 20
     c.save()
+    return send_file(filepath, as_attachment=True)
 
-    try:
-        return send_file(filepath, as_attachment=True)
-    except FileNotFoundError:
-        return "❌ PDF file not found."
-
+# Required for Render
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
